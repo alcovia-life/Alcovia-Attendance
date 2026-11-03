@@ -419,7 +419,7 @@
                 <div class="select-wrapper">
                     <select id="employee">
                         <option value="" disabled selected>Select your name</option>
-                        <option value="devina" data-email="devina.neema@alcovia.life" data-full="Devina Neema">Devina Neema</option>
+                        <option value="devina" data-email="devina.neema@alcovia.life" data-full="Devina Neema" data-start="2026-11-04">Devina Neema</option>
                         <option value="sahil" data-email="sahil@alcovia.life" data-full="Sahil Puri">Sahil Puri</option>
                         <option value="gaurav" data-email="gaurav.mehta@alcovia.life" data-full="Gaurav Mehta">Gaurav Mehta</option>
                         <option value="samanyu" data-email="samanyu.pant@alcovia.life" data-full="Samanyu Pant">Samanyu Pant</option>
@@ -461,7 +461,7 @@
                 <div class="select-wrapper">
                     <select id="leave-employee">
                         <option value="" disabled selected>Select your name</option>
-                        <option value="devina" data-email="devina.neema@alcovia.life" data-full="Devina Neema">Devina Neema</option>
+                        <option value="devina" data-email="devina.neema@alcovia.life" data-full="Devina Neema" data-start="2026-11-04">Devina Neema</option>
                         <option value="sahil" data-email="sahil@alcovia.life" data-full="Sahil Puri">Sahil Puri</option>
                         <option value="gaurav" data-email="gaurav.mehta@alcovia.life" data-full="Gaurav Mehta">Gaurav Mehta</option>
                         <option value="samanyu" data-email="samanyu.pant@alcovia.life" data-full="Samanyu Pant">Samanyu Pant</option>
@@ -521,7 +521,7 @@
         // check-ins and the yesterday lookup go through n8n (Sahil's service account), leave requests stay on Apps Script
         const ATTENDANCE_API = 'https://n8n.alcovia.life/webhook/alcovia-attendance-api';
         // bump on every deploy so tabs left open pick up the new page on their own
-        const PAGE_VERSION = '2026-10-30.1';
+        const PAGE_VERSION = '2026-11-03.1';
 
         // ── Utilities ────────────────────────────────────────────────
 
@@ -579,8 +579,10 @@
             updateUI();
         }
 
-        function hadYesterdayEntry(empEmail) {
-            const key = yKey(empEmail);
+        function hadYesterdayEntry(emp) {
+            // a new joiner has no absence to explain for days before their first day (data-start)
+            if (emp.start && getPreviousWorkday() < emp.start) return true;
+            const key = yKey(emp.email);
             return key in yesterdayCache ? yesterdayCache[key] : true;
         }
 
@@ -674,7 +676,7 @@
             const sel = document.getElementById('employee');
             const opt = sel.options[sel.selectedIndex];
             if (!sel.value) return null;
-            return { id: sel.value, name: opt.dataset.full, email: opt.dataset.email };
+            return { id: sel.value, name: opt.dataset.full, email: opt.dataset.email, start: opt.dataset.start };
         }
 
         function updateUI() {
@@ -702,7 +704,7 @@
             // the previous workday changes at midnight, so look it up again for the new day
             if (isPreCheckin && !(yKey(emp.email) in yesterdayCache)) prefetchYesterday(emp);
 
-            leaveGroup.classList.toggle('hidden', !isPreCheckin || hadYesterdayEntry(emp.email));
+            leaveGroup.classList.toggle('hidden', !isPreCheckin || hadYesterdayEntry(emp));
             reasonGroup.classList.toggle('hidden', !isPreCheckin || !isCurrentlyLate());
 
             if (!last) {
@@ -733,7 +735,7 @@
             let absence = null;
             if (type === 'in') {
                 const prevDay = getPreviousWorkday();
-                if (!hadYesterdayEntry(emp.email)) {
+                if (!hadYesterdayEntry(emp)) {
                     const leaveType = document.getElementById('leave-type-yesterday').value;
                     const leaveReason = document.getElementById('leave-reason').value.trim();
                     if (!leaveType) { showToast("Select absence type", 'error'); return; }
